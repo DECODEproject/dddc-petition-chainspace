@@ -6,20 +6,28 @@ from scripts.utils import get_contract
 
 
 class CONTRACTS:
-    GENERATE_KEYPAIR = "03-CREDENTIAL_ISSUER-keygen.zencode"
-    PUBLIC_VERIFY = "04-CREDENTIAL_ISSUER-publish-verifier.zencode"
-    BLIND_SIGN = "05-CREDENTIAL_ISSUER-credential-sign.zencode"
     CITIZEN_KEYGEN = "01-CITIZEN-credential-keygen.zencode"
-    CITIZEN_REQ_BLIND_SIG = "02-CITIZEN-credential-request.zencode"
-    AGGREGATE_CREDENTIAL = "06-CITIZEN-aggregate-credential-signature.zencode"
-    PROVE_CREDENTIAL = "07-CITIZEN-prove-credential.zencode"
-    VERIFY_CREDENTIAL = "08-VERIFIER-verify-credential.zencode"
-    CREATE_PETITION = "09-CITIZEN-create-petition.zencode"
-    APPROVE_PETITION = "10-VERIFIER-approve-petition.zencode"
-    SIGN_PETITION = "11-CITIZEN-sign-petition.zencode"
-    INCREMENT_PETITION = "12-LEDGER-add-signed-petition.zencode"
-    TALLY_PETITION = "13-CITIZEN-tally-petition.zencode"
-    COUNT_PETITION = "14-CITIZEN-count-petition.zencode"
+    CITIZEN_CREDENTIAL_REQUEST = "02-CITIZEN-credential-request.zencode"
+
+    CREDENTIAL_ISSUER_GENERATE_KEYPAIR = "03-CREDENTIAL_ISSUER-keygen.zencode"
+    CREDENTIAL_ISSUER_PUBLISH_VERIFY = "04-CREDENTIAL_ISSUER-publish-verifier.zencode"
+    CREDENTIAL_ISSUER_SIGN_CREDENTIAL = "05-CREDENTIAL_ISSUER-credential-sign.zencode"
+
+    CITIZEN_AGGREGATE_CREDENTIAL = "06-CITIZEN-aggregate-credential-signature.zencode"
+    CITIZEN_PROVE_CREDENTIAL = "07-CITIZEN-prove-credential.zencode"
+
+    VERIFIER_VERIFY_CREDENTIAL = "08-VERIFIER-verify-credential.zencode"
+
+    CITIZEN_CREATE_PETITION = "09-CITIZEN-create-petition.zencode"
+
+    VERIFIER_APPROVE_PETITION = "10-VERIFIER-approve-petition.zencode"
+
+    CITIZEN_SIGN_PETITION = "11-CITIZEN-sign-petition.zencode"
+
+    LEDGER_INCREMENT_PETITION = "12-LEDGER-add-signed-petition.zencode"
+
+    CITIZEN_TALLY_PETITION = "13-CITIZEN-tally-petition.zencode"
+    CITIZEN_COUNT_PETITION = "14-CITIZEN-count-petition.zencode"
 
 
 config = BaseConfig()
