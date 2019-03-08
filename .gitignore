@@ -1,0 +1,6 @@
+.idea
+.pytest_cache
+.petition-chainspace
+*.egg-info
+*.iml
+.coverage
