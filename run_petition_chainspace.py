@@ -130,6 +130,19 @@ with petition_contract.test_service():
 
     credential_proof = execute_contract(CONTRACTS.CITIZEN_PROVE_CREDENTIAL, keys=citizen_A_credential, data=credential_issuer_verification_keypair)
 
+    print("CREDENTIAL PROOF: ")
+    pp_json(credential_proof)
+
+    citizen_create_petition_request = execute_contract(CONTRACTS.CITIZEN_CREATE_PETITION, keys=citizen_A_credential, data=credential_issuer_verification_keypair)
+
+    print("CREATE PETITION REQUEST: ")
+    pp_json(citizen_create_petition_request)
+
+    citizen_petition = execute_contract(CONTRACTS.VERIFIER_APPROVE_PETITION, keys=credential_issuer_verification_keypair, data=citizen_create_petition_request)
+
+    print("PETITION VERIFICATION:")
+    pp_json(citizen_petition)
+
     # pass the credential proof, and the verifier keys into the petition (need to just get the public part of this?)
     # If we want the citizen to be able to do this on their own we need the verifier keys to get input somehow
 
@@ -143,14 +156,8 @@ with petition_contract.test_service():
         None,
         petition_UUID,
         options,
-        None,
-        None,
-        #sk_owners[0],  # private key of the owner for signing
-        #aggr_pk_owner,  # aggregated public key of the owners
-        1,
-        1,
-        None
-        #aggr_vk  # aggregated verifier key
+        credential_proof,
+        credential_issuer_verification_keypair
     )
     print("\npetition.create_petition()")
 

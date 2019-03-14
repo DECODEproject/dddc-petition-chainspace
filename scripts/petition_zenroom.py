@@ -23,7 +23,7 @@ contract = ChainspaceContract('petition')
 @contract.method('init')
 def init():
     return {
-        'outputs': (dumps({'type': 'PToken'}),),
+        'outputs': (dumps({'type': 'PetitionToken'}),),
     }
 
 
@@ -31,44 +31,26 @@ def init():
 # create petition
 # ------------------------------------------------------------------
 @contract.method('create_petition')
-def create_petition(inputs, reference_inputs, parameters, UUID, options, priv_owner, pub_owner,
-                    t_owners, n_owners, aggr_vk):
-    # inital score
-    # pet_params = pet_setup()
-    # (G, g, hs, o) = pet_params
-    # zero = (G.infinite(), G.infinite())
-    # scores = [pack(zero), pack(zero)]
+def create_petition(inputs, reference_inputs, parameters,
+                    petittionUUID, options,
+                    credential_proof, credential_issuer_verification_keypair):
     scores = [0, 0]
-
     # new petition object
     new_petition = {
-        'type': 'PObject',
-        'UUID': UUID,  # unique ID of the petition
-        't_owners': t_owners,
-        'n_owners': n_owners,
-      #  'owner': pack(pub_owner),  # entity creating the petition
-      #  'verifier': pack(aggr_vk),  # entity delivering credentials to participate to the petition
+        'type': 'PetitionObject',
+        'UUID': petittionUUID,  # unique ID of the petition
         'options': options,  # the options
         'scores': scores,  # the signatures per option
-        'dec': []  # holds decryption shares
     }
 
 
-    # ID lists
-    signed_list = {
-        'type': 'PList',
+    spent_list = {
+        'type': 'SpentList',
         'list': []
     }
 
-    # signature: this should be be signed by the owners
-    # hasher = sha256()
-    # hasher.update(dumps(new_petition).encode('utf8'))
-    # sig = do_ecdsa_sign(pet_params[0], priv_owner, hasher.digest())
-
-    # return
     return {
-        'outputs': (inputs[0], dumps(new_petition), dumps(signed_list)),
-        # 'extra_parameters' : (pack(sig),)
+        'outputs': (inputs[0], dumps(new_petition), dumps(spent_list)),
     }
 
 

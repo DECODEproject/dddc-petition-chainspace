@@ -48,13 +48,17 @@ verification_result = execute_contract(CONTRACTS.VERIFIER_VERIFY_CREDENTIAL,
 
 assert verification_result == "OK"
 
-citizen_create_petition_request = execute_contract(CONTRACTS.CITIZEN_CREATE_PETITION,
-                                            keys=credential,
-                                            data=credential_issuer_verification_keypair)
+# this is what would be stored in the ledger, because it has the proof in it
+citizen_petition = execute_contract(CONTRACTS.CITIZEN_CREATE_PETITION,
+                                    keys=credential,
+                                    data=credential_issuer_verification_keypair)
 
-citizen_petition = execute_contract(CONTRACTS.VERIFIER_APPROVE_PETITION,
-                            keys=credential_issuer_verification_keypair,
-                            data=citizen_create_petition_request)
+# verified petition - doesnt contain the proof, just the petition
+# This could really just return "OK" if it is verifiec
+# TODO - what happens if this fails? what does it return?
+verified_petition = execute_contract(CONTRACTS.VERIFIER_APPROVE_PETITION,
+                                     keys=credential_issuer_verification_keypair,
+                                     data=citizen_petition)
 
 # SIGNING
 

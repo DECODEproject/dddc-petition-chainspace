@@ -6,3 +6,5 @@
 *.iml
 .coverage
 dddc_petition_chainspace
+*.pyc
+.eggs
