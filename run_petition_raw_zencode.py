@@ -1,9 +1,11 @@
 from scripts.zencontract import ZenContract, CONTRACTS
 import json
 
+
 def print_json(label, json_str):
     formatted = json.dumps(json.loads(json_str), sort_keys=True, indent=4)
     print(label + ":\n" + formatted)
+
 
 def execute_contract(contractName, keys=None, data=None):
     contract = ZenContract(contractName)

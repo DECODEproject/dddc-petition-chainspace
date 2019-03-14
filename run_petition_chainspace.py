@@ -11,6 +11,26 @@ import chainspacecontract as csc
 from scripts import petition_zenroom as petition
 from scripts.petition_zenroom import contract as petition_contract
 
+from scripts.zencontract import ZenContract, CONTRACTS
+import json
+
+
+def print_json(label, json_str):
+    formatted = json.dumps(json.loads(json_str), sort_keys=True, indent=4)
+    print(label + ":\n" + formatted)
+
+
+def execute_contract(contractName, keys=None, data=None):
+    contract = ZenContract(contractName)
+    contract.keys(keys)
+    contract.data(data)
+    res = contract.execute()
+    if (res is not None) and result.startswith("{"):
+        print_json(contractName, res)
+    else:
+        print(contractName + ":\n" + res)
+    return res
+
 debug = 0
 
 pp = pprint.PrettyPrinter(indent=4)
