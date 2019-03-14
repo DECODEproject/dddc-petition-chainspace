@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
 
 
-. .petition-chainspace/bin/activate
-
-python3 ./run_end_to_end_petition.py
+. .petition-chainspace-py2/bin/activate && python ./run_petition_chainspace.py

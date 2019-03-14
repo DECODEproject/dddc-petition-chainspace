@@ -1,6 +1,7 @@
 .idea
 .pytest_cache
 .petition-chainspace
+.petition-chainspace-py2
 *.egg-info
 *.iml
 .coverage

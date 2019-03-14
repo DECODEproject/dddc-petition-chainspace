@@ -7,3 +7,14 @@ python3 -m venv .petition-chainspace
 . ./.petition-chainspace/bin/activate
 pip install --upgrade pip
 pip install -e .
+
+deactivate
+
+virtualenve .petition-chainspace-py2
+. ./.petition-chainspace-py2/bin/activate
+pip install --upgrade pip
+pip install -e .
+
+echo "If you are on OSX you will maybe need to install a custom version of zenroom with osx lib in it"
+echo "(in virtual env) pip install -e ../zenroom-py"
+
