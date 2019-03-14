@@ -15,6 +15,11 @@ from scripts.zencontract import ZenContract, CONTRACTS
 import json
 
 
+debug = 0
+
+pp = pprint.PrettyPrinter(indent=4)
+
+
 def print_json(label, json_str):
     formatted = json.dumps(json.loads(json_str), sort_keys=True, indent=4)
     print(label + ":\n" + formatted)
@@ -25,70 +30,11 @@ def execute_contract(contractName, keys=None, data=None):
     contract.keys(keys)
     contract.data(data)
     res = contract.execute()
-    if (res is not None) and result.startswith("{"):
+    if (res is not None) and res.startswith("{"):
         print_json(contractName, res)
     else:
         print(contractName + ":\n" + res)
     return res
-
-debug = 0
-
-pp = pprint.PrettyPrinter(indent=4)
-
-# Petition Parameters
-petition_UUID = 1234  # petition unique id (needed for crypto) - A BigNumber from Open SSL
-options = ['YES', 'NO']
-
-# Set up the petition
-
-
-print("Petition Setup:")
-
-t_owners = 2  # threshold number of owners
-n_owners = 3  # total number of owners
-
-#v = [o.random() for _ in range(0, t_owners)]
-
-#print("threshold seeds for secret keys (v): " + str(v))
-
-#sk_owners = [cu.poly_eval(v, i) % o for i in range(1, n_owners + 1)]
-
-print("\nSecret Keys of the petition owners: ")
-
-# for i in range(n_owners):
-#     print("sk[" + str(i) + "] : " + str(sk_owners[i]))
-
-# pk_owner = [xi * g for xi in sk_owners]
-
-print("\nPublic keys of the petition owners: ")
-# for i in range(n_owners):
-#     print("pk[" + str(i) + "] : " + str_ec_pt(pk_owner[i]))
-
-# l = cu.lagrange_basis(range(1, t_owners + 1), o, 0)
-# aggr_pk_owner = cu.ec_sum([l[i] * pk_owner[i] for i in range(t_owners)])
-
-#print("\nAggregate public key for owners: " + str_ec_pt(aggr_pk_owner))
-
-# coconut parameters
-
-# print("Coconut setup")
-# t, n = 4, 5  # threshold and total number of authorities
-# bp_params = cs.setup()  # bp system's parameters
-#
-# (sk, vk) = cs.ttp_keygen(bp_params, t, n)  # authorities keys
-
-print("\nSecret keys of the authorities (Credential issuers):")
-# for i in range(n):
-#     print("sk_auth[" + str(i) + "] : " + str(sk[i]))
-
-print("\nVerification keys of the authorities (Credential issuers):")
-# for i in range(n):
-#     print("pk_auth[" + str(i) + "] : " + str(vk[i]))
-
-# aggr_vk = cs.agg_key(bp_params, vk, threshold=True)
-
-#print("\nAggregated Verification Key: " + str(aggr_vk))
-
 
 def pp_json(json_str):
     pp.pprint(json.loads(json_str))
@@ -123,27 +69,54 @@ def post_transaction(transaction, path):
     return response
 
 
+print("Petition Setup:")
+petition_UUID = 1234  # petition unique id (needed for crypto) - A BigNumber from Open SSL
+options = ['YES', 'NO']
+
+#t_owners = 2  # threshold number of owners
+#n_owners = 3  # total number of owners
+#v = [o.random() for _ in range(0, t_owners)]
+#print("threshold seeds for secret keys (v): " + str(v))
+#sk_owners = [cu.poly_eval(v, i) % o for i in range(1, n_owners + 1)]
+#print("\nSecret Keys of the petition owners: ")
+# for i in range(n_owners):
+#     print("sk[" + str(i) + "] : " + str(sk_owners[i]))
+# pk_owner = [xi * g for xi in sk_owners]
+#print("\nPublic keys of the petition owners: ")
+# for i in range(n_owners):
+#     print("pk[" + str(i) + "] : " + str_ec_pt(pk_owner[i]))
+# l = cu.lagrange_basis(range(1, t_owners + 1), o, 0)
+# aggr_pk_owner = cu.ec_sum([l[i] * pk_owner[i] for i in range(t_owners)])
+#print("\nAggregate public key for owners: " + str_ec_pt(aggr_pk_owner))
+# coconut parameters
+# print("Coconut setup")
+# t, n = 4, 5  # threshold and total number of authorities
+# bp_params = cs.setup()  # bp system's parameters
+#
+# (sk, vk) = cs.ttp_keygen(bp_params, t, n)  # authorities keys
+#print("\nSecret keys of the authorities (Credential issuers):")
+# for i in range(n):
+#     print("sk_auth[" + str(i) + "] : " + str(sk[i]))
+#print("\nVerification keys of the authorities (Credential issuers):")
+# for i in range(n):
+#     print("pk_auth[" + str(i) + "] : " + str(vk[i]))
+# aggr_vk = cs.agg_key(bp_params, vk, threshold=True)
+#print("\nAggregated Verification Key: " + str(aggr_vk))
+start_time = datetime.now()
 print("\n======== EXECUTING PETITION =========\n")
 
-start_time = datetime.now()
+credential_issuer_keypair = execute_contract(CONTRACTS.CREDENTIAL_ISSUER_GENERATE_KEYPAIR)
+credential_issuer_verification_keypair = execute_contract(CONTRACTS.CREDENTIAL_ISSUER_PUBLISH_VERIFY, keys=credential_issuer_keypair)
 
+# Generate a citizen keypair and credential (equivalent to "sign_petition_crypto" in the python version
+# Which returns a private key and "sigma" which is the credential
+def generate_citizen_keypair_and_credential():
+    citizen_keypair = execute_contract(CONTRACTS.CITIZEN_KEYGEN)
+    citizen_credential_request = execute_contract(CONTRACTS.CITIZEN_CREDENTIAL_REQUEST, keys=citizen_keypair)
+    credential_issuer_signed_credential = execute_contract(CONTRACTS.CREDENTIAL_ISSUER_SIGN_CREDENTIAL, keys=credential_issuer_keypair, data=citizen_credential_request)
+    citizen_credential = execute_contract(CONTRACTS.CITIZEN_AGGREGATE_CREDENTIAL, keys=citizen_keypair, data=credential_issuer_signed_credential)
+    return (citizen_keypair, citizen_credential)
 
-# def sign_petition_crypto():
-#     global d, gamma, private_m, Lambda, ski, sigs_tilde, sigma_tilde, sigs, sigma
-#     # some crypto to get the credentials
-#     # ------------------------------------
-#     # This can be done with zencode "I create my new credential keypair"
-#     # Keypair for signer
-#     (d, gamma) = cs.elgamal_keygen(bp_params)
-#     private_m = [d]  # array containing the private attributes, in this case the private key
-#     Lambda = cs.prepare_blind_sign(bp_params, gamma, private_m)  # signer prepares a blind signature request from their private key
-#     # This would be done by the authority
-#     sigs_tilde = [cs.blind_sign(bp_params, ski, gamma, Lambda) for ski in sk]  # blind sign from each authority
-#     # back with the signer, unblind all the signatures, using the private key
-#     sigs = [cs.unblind(bp_params, sigma_tilde, d) for sigma_tilde in sigs_tilde]
-#     # aggregate all the credentials
-#     sigma = cs.agg_cred(bp_params, sigs)
-#     return (sigma, d)
 
 
 with petition_contract.test_service():
@@ -152,6 +125,9 @@ with petition_contract.test_service():
     token = init_transaction['transaction']['outputs'][0]
 
     post_transaction(init_transaction, "/init")
+
+    (citizen_A_keypair, citizen_A_credential) = generate_citizen_keypair_and_credential()
+
 
     create_transaction = petition.create_petition(
         (token,),
@@ -163,8 +139,8 @@ with petition_contract.test_service():
         None,
         #sk_owners[0],  # private key of the owner for signing
         #aggr_pk_owner,  # aggregated public key of the owners
-        t_owners,
-        n_owners,
+        1,
+        1,
         None
         #aggr_vk  # aggregated verifier key
     )
