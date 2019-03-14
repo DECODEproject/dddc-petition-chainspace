@@ -128,6 +128,14 @@ with petition_contract.test_service():
 
     (citizen_A_keypair, citizen_A_credential) = generate_citizen_keypair_and_credential()
 
+    credential_proof = execute_contract(CONTRACTS.CITIZEN_PROVE_CREDENTIAL, keys=citizen_A_credential, data=credential_issuer_verification_keypair)
+
+    # pass the credential proof, and the verifier keys into the petition (need to just get the public part of this?)
+    # If we want the citizen to be able to do this on their own we need the verifier keys to get input somehow
+
+    # The cs contract can then verify the proof as part of the checker.
+
+    # then we can actually create a petition as the citizen and the checker can VERIFIER_APPROVE_PETITION in the checker
 
     create_transaction = petition.create_petition(
         (token,),

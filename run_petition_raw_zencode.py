@@ -35,6 +35,8 @@ credential = execute_contract(CONTRACTS.CITIZEN_AGGREGATE_CREDENTIAL,
 
 # How come the citizen needs the verification keypair of the credential issuer? surely only needs the public key?
 # Also why is the data and the keys appear to be swapped around on this one?
+
+# CREATE PETITION
 credential_proof = execute_contract(CONTRACTS.CITIZEN_PROVE_CREDENTIAL,
                                     keys=credential,
                                     data=credential_issuer_verification_keypair)
@@ -53,6 +55,8 @@ citizen_create_petition_request = execute_contract(CONTRACTS.CITIZEN_CREATE_PETI
 citizen_petition = execute_contract(CONTRACTS.VERIFIER_APPROVE_PETITION,
                             keys=credential_issuer_verification_keypair,
                             data=citizen_create_petition_request)
+
+# SIGNING
 
 citizen_petition_signature = execute_contract(CONTRACTS.CITIZEN_SIGN_PETITION,
                                       keys=credential,
