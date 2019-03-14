@@ -33,7 +33,7 @@ def init():
 @contract.method('create_petition')
 def create_petition(inputs, reference_inputs, parameters,
                     petittionUUID, options,
-                    credential_proof, credential_issuer_verification_keypair):
+                    petition, credential_issuer_verification_keypair):
     scores = [0, 0]
     # new petition object
     new_petition = {
