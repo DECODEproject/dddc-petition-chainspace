@@ -8,6 +8,7 @@
 # general
 import json
 import pprint
+import sys, traceback
 
 # chainspace
 from chainspacecontract import ChainspaceContract
@@ -74,22 +75,24 @@ def init():
 @contract.method('create_petition')
 def create_petition(inputs, reference_inputs, parameters,
                     petition_uuid,
-                    owner_credential_proof,
+                    owner_credentials,
                     verification_keypair):
 
     contract_result = execute_contract(CONTRACTS.CITIZEN_CREATE_PETITION,
-                                       keys=owner_credential_proof,
+                                       keys=owner_credentials,
                                        data=verification_keypair)
 
-    print(contract_result)
     petition_content = json.loads(contract_result)
 
     new_petition = {
         "type": "PetitionObject",
-        "UUID": petition_uuid,  # unique ID of the petition
+        "UUID": petition_uuid,
+        "verification_keypair": json.loads(verification_keypair)
     }
 
     new_petition.update(petition_content)
+
+    pp_object(new_petition)
 
     spent_list = {
         'type': 'SpentList',
@@ -111,34 +114,43 @@ def create_petition(inputs, reference_inputs, parameters,
 def create_petition_checker(inputs, reference_inputs, parameters, outputs, returns, dependencies):
     try:
         # retrieve inputs
+        petition_token = json.loads(outputs[0])
         petition_tx = json.loads(outputs[1])
         spent_list = json.loads(outputs[2])
 
         # check format
         if len(inputs) != 1 or len(reference_inputs) != 0 or len(outputs) != 3 or len(returns) != 0:
+            print("CHECKER-FAIL: incorrect inputs and outputs")
             return False
 
-        # check types
-        if json.loads(inputs[0])['type'] != 'PetitionToken' or \
-                json.loads(outputs[0])['type'] != 'PetitionToken':
-            return False
-
-        if petition_tx['type'] != 'PetitionObject' or \
+        if petition_token['type'] != 'PetitionToken' or \
+                petition_tx['type'] != 'PetitionObject' or \
                 spent_list['type'] != 'SpentList':
+
+            print("CHECKER-FAIL: types incorrect")
             return False
 
         # check fields
         if petition_tx['UUID'] is None:
+            print("CHECKER-FAIL: UUID is empty")
             return False
 
-        if (petition_tx['petition']) is None:
+        if (petition_tx['verifier']) is None:
+            print("CHECKER-FAIL: no verifier")
             return False
 
-        petition = petition_tx['petition']
+        verification_keypair = json.dumps(petition_tx['verification_keypair'])
+        petition = json.dumps(petition_tx)
 
-        # verified_petition = execute_contract(CONTRACTS.VERIFIER_APPROVE_PETITION,
-        #                                      keys=credential_issuer_verification_keypair,
-        #                                      data=petition)
+        verified_petition = execute_contract(CONTRACTS.VERIFIER_APPROVE_PETITION,
+                                             keys=verification_keypair,
+                                             data=petition)
+
+        # @TODO - could do with a better thing to check here.
+        if not (verified_petition.startswith("{") and verified_petition.endswith("}")):
+            print("CHECKER-FAIL: could not verify petition!")
+            print(verified_petition)
+            return False
 
         # verify that the spent list & results store are empty
         if spent_list['list']:
@@ -148,6 +160,11 @@ def create_petition_checker(inputs, reference_inputs, parameters, outputs, retur
         return True
 
     except (KeyError, Exception):
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+
+        print("EXCEPTION IN CHECKER:")
+        traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                  limit=2, file=sys.stdout)
         return False
 
 
