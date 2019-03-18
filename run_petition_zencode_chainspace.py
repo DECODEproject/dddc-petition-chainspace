@@ -158,22 +158,45 @@ with petition_contract.test_service():
 
     post_transaction(sign_A_tx, "/sign_petition")
 
-    old_petition = create_transaction['transaction']['outputs'][1]
+    old_petition = sign_A_tx['transaction']['outputs'][0]
 
 
-    # Citizen A, B and C sign the petition
-    #(citizen_B_keypair, citizen_B_credential) = generate_citizen_keypair_and_credential()
-    #(citizen_C_keypair, citizen_C_credential) = generate_citizen_keypair_and_credential()
+    # Citizen B Signs
+
+    (citizen_B_keypair, citizen_B_credential) = generate_citizen_keypair_and_credential()
+    citizen_B_signature = execute_contract(CONTRACTS.CITIZEN_SIGN_PETITION,
+                                           keys=citizen_B_credential,
+                                           data=credential_issuer_verification_keypair)
+
+    sign_B_tx = petition.sign_petition(
+        (old_petition,),
+        None,
+        None,
+        citizen_B_signature
+    )
+
+    post_transaction(sign_B_tx, "/sign_petition")
+
+    old_petition = sign_B_tx['transaction']['outputs'][0]
 
 
+    # Citizen C signs petition
+    (citizen_C_keypair, citizen_C_credential) = generate_citizen_keypair_and_credential()
 
-    # This is not needed until signing
-    # credential_proof = execute_contract(CONTRACTS.CITIZEN_PROVE_CREDENTIAL, keys=citizen_A_credential, data=credential_issuer_verification_keypair)
-    # print("CREDENTIAL PROOF: ")
-    # pp_json(credential_proof)
-    #
-    # print("VERIFICATION KEYPAIR: ")
-    # pp_json(credential_issuer_verification_keypair)
+    citizen_C_signature = execute_contract(CONTRACTS.CITIZEN_SIGN_PETITION,
+                                           keys=citizen_C_credential,
+                                           data=credential_issuer_verification_keypair)
+
+    sign_C_tx = petition.sign_petition(
+        (old_petition,),
+        None,
+        None,
+        citizen_C_signature
+    )
+
+    post_transaction(sign_C_tx, "/sign_petition")
+
+    old_petition = sign_C_tx['transaction']['outputs'][0]
 
     tally_tx = petition.tally_petition(
         (old_petition,),
@@ -184,6 +207,17 @@ with petition_contract.test_service():
 
     post_transaction(tally_tx, "/tally_petition")
 
+    old_petition = tally_tx['transaction']['outputs'][0]
+
+    tally_results_tx = petition.read_petition(
+        None,
+        (old_petition, ),
+        None
+    )
+
+    post_transaction(tally_results_tx, "/read_petition")
+
+    print(tally_results_tx['transaction']['returns'][0])
 
 end_time = datetime.now()
 
@@ -195,5 +229,5 @@ for result in results:
     if not (result[0] is True):
         all_ok = False
 
-print("\n\nRESULT OF ALL CONTRACT CALLS: " + str(all_ok) + "\n\n")
-print("\n\nTime Taken " + str(datetime.now() - start_time) + "\n\n")
+print("\nRESULT OF ALL CONTRACT CALLS: " + str(all_ok))
+print("\nTime Taken " + str(datetime.now() - start_time) + "\n\n")

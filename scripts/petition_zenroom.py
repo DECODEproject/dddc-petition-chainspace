@@ -125,6 +125,7 @@ def sign_petition(inputs, reference_inputs, parameters, petition_signature):
 def tally_petition(inputs, reference_inputs, parameters, owner_credential):
 
     petition = json.loads(inputs[0])
+
     zen_petition = petition['zen_petition']
 
     tally = execute_contract(CONTRACTS.CITIZEN_TALLY_PETITION,
@@ -137,6 +138,25 @@ def tally_petition(inputs, reference_inputs, parameters, owner_credential):
 
     return {
         'outputs': (json.dumps(new_petition), )
+    }
+
+
+# ------------------------------------------------------------------
+# read
+# ------------------------------------------------------------------
+@contract.method('read_petition')
+def read_petition(inputs, reference_inputs, parameters):
+    petition = json.loads(reference_inputs[0])
+
+    zen_tally = petition['zen_tally']
+    zen_petition = petition['zen_petition']
+
+    tally_count = execute_contract(CONTRACTS.CITIZEN_COUNT_PETITION,
+                                   keys=json.dumps(zen_tally),
+                                   data=json.dumps(zen_petition))
+
+    return {
+        'returns': (tally_count,),
     }
 
 
@@ -315,6 +335,38 @@ def tally_petition_checker(inputs, reference_inputs, parameters, outputs, return
 
         if zen_tally['tally'] is None:
             print("CHECKER-FAIL: no tally result in zen_tally")
+
+        return True
+
+    except (KeyError, Exception):
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+
+        print("EXCEPTION IN CHECKER:")
+        traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                  limit=2, file=sys.stdout)
+        return False
+
+
+# ------------------------------------------------------------------
+# check petition's signature
+# ------------------------------------------------------------------
+@contract.checker('read_petition')
+def read_petition_checker(inputs, reference_inputs, parameters, outputs, returns, dependencies):
+    try:
+        results = json.loads(returns[0])  # outputs are always strings
+
+        # check format
+        if len(inputs) is not 0 or \
+                len(reference_inputs) is not 1 or \
+                len(outputs) is not 0 or \
+                len(parameters) is not 0 or \
+                len(returns) is not 1:
+            print("CHECKER-FAIL: incorrect inputs and outputs:")
+            print("inputs: " + str(len(inputs)))
+            print("outputs: " + str(len(outputs)))
+            print("parameters: " + str(len(parameters)))
+            print("returns: " + str(len(returns)))
+            return False
 
         return True
 
