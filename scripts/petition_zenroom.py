@@ -95,23 +95,26 @@ def create_petition(inputs, reference_inputs, parameters,
         'outputs': (inputs[0], json.dumps(petition)),
     }
 
+
 # ------------------------------------------------------------------
 # sign
 # ------------------------------------------------------------------
-@contract.method('sign')
-def sign(inputs, reference_inputs, parameters, petition_signature):
+@contract.method('sign_petition')
+def sign_petition(inputs, reference_inputs, parameters, petition_signature):
 
     old_petition = json.loads(inputs[0])
-    new_list = json.loads(inputs[1])
+    zen_petition = old_petition['zen_petition']
 
     petition_with_signature = execute_contract(CONTRACTS.LEDGER_INCREMENT_PETITION,
-                                               keys=old_petition,
+                                               keys=json.dumps(zen_petition),
                                                data=petition_signature)
 
+    new_petition = old_petition.copy()
+    new_petition['zen_petition'] = json.loads(petition_with_signature)
 
     return {
-        'outputs': (petition_with_signature,json.dumps(new_list)),
-        'extra_parameters' : ()
+        'outputs': (json.dumps(new_petition), ),
+        'extra_parameters': (petition_signature, )
     }
 
 
@@ -175,6 +178,73 @@ def create_petition_checker(inputs, reference_inputs, parameters, outputs, retur
                                   limit=2, file=sys.stdout)
         return False
 
+
+# ------------------------------------------------------------------
+# check petition's signature
+# ------------------------------------------------------------------
+@contract.checker('sign_petition')
+def create_petition_checker(inputs, reference_inputs, parameters, outputs, returns, dependencies):
+    try:
+        petition = json.loads(outputs[0])  # outputs are always strings
+
+        print("CHECKER-PARAMETERS: " + str(parameters))
+
+        # check format
+        if len(inputs) is not 1 or \
+                len(reference_inputs) is not 0 or \
+                len(outputs) is not 1 or \
+                len(parameters) is not 1 or \
+                len(returns) is not 0:
+            print("CHECKER-FAIL: incorrect inputs and outputs:")
+            print("inputs: " + str(len(inputs)))
+            print("outputs: " + str(len(outputs)))
+            print("parameters: " + str(len(parameters)))
+            print("returns: " + str(len(returns)))
+            return False
+
+        if petition['type'] != 'PetitionObject':
+            print("CHECKER-FAIL: types incorrect")
+            return False
+
+        # check fields
+        if petition['UUID'] is None:
+            print("CHECKER-FAIL: UUID is empty")
+            return False
+
+        if (petition['zen_petition']) is None:
+            print("CHECKER-FAIL: no zen_petition")
+            return False
+
+        if (petition['verification_keypair']) is None:
+            print("CHECKER-FAIL: no verifier")
+            return False
+
+        if (parameters[0]) is None:
+            print("CHECKER-FAIL: no signature")
+            return False
+
+        # @TODO - need to cryptographically verify that the signature is valid and that what went into the petition is good
+
+        # zen_petition = json.dumps(petition['zen_petition'])
+        #
+        #
+        #
+        # #
+        # if not (petition_with_signature.startswith("{") and petition_with_signature.endswith("}")):
+        #     print("CHECKER-FAIL: could not verify petition!")
+        #     print(verified_petition)
+        #     return False
+
+        # otherwise
+        return True
+
+    except (KeyError, Exception):
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+
+        print("EXCEPTION IN CHECKER:")
+        traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                  limit=2, file=sys.stdout)
+        return False
 
 ####################################################################
 # main
