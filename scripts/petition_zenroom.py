@@ -1,17 +1,53 @@
 """
-	A simple smart contract illustarting an e-petition.
+    A simple smart contract illustarting an e-petition.
 """
 
-# chainspace
-from chainspacecontract import ChainspaceContract
 ####################################################################
 # imports
 ####################################################################
 # general
-from json import dumps, loads
+import json
+import pprint
 
-## contract name
+# chainspace
+from chainspacecontract import ChainspaceContract
+
+from scripts.zencontract import ZenContract, CONTRACTS
+
+pp = pprint.PrettyPrinter(indent=4)
+
+
+def print_json(contract_name, result):
+    print(contract_name + ":foo")
+    pp_json(result)
+
+
+# contract name
 contract = ChainspaceContract('petition')
+
+debug = 0
+
+
+def execute_contract(contract_name, keys=None, data=None):
+    zen_contract = ZenContract(contract_name)
+    zen_contract.keys(keys)
+    zen_contract.data(data)
+    res = zen_contract.execute()
+
+    if debug is 1:
+        if (res is not None) and res.startswith("{"):
+            print_json(contract_name, res)
+        else:
+            print(contract_name + ":\n" + res)
+    return res
+
+
+def pp_json(json_str):
+    pp.pprint(json.loads(json_str))
+
+
+def pp_object(obj):
+    pp.pprint(obj)
 
 
 ####################################################################
@@ -23,26 +59,37 @@ contract = ChainspaceContract('petition')
 @contract.method('init')
 def init():
     return {
-        'outputs': (dumps({'type': 'PetitionToken'}),),
+        'outputs': (json.dumps({'type': 'PetitionToken'}),),
     }
 
 
 # ------------------------------------------------------------------
 # create petition
 # ------------------------------------------------------------------
+# This goes in the verifier
+# verified_petition = execute_contract(CONTRACTS.VERIFIER_APPROVE_PETITION, keys=credential_issuer_verification_keypair, data=citizen_petition)
+
+# Everything needed is in the petition. The checker just needs to run VERIFIER_APPROVE_PETITION
+# You need the reference inputs and parameters because its part of the framework
 @contract.method('create_petition')
 def create_petition(inputs, reference_inputs, parameters,
-                    petittionUUID, options,
-                    petition, credential_issuer_verification_keypair):
-    scores = [0, 0]
-    # new petition object
+                    petition_uuid,
+                    owner_credential_proof,
+                    verification_keypair):
+
+    contract_result = execute_contract(CONTRACTS.CITIZEN_CREATE_PETITION,
+                                       keys=owner_credential_proof,
+                                       data=verification_keypair)
+
+    print(contract_result)
+    petition_content = json.loads(contract_result)
+
     new_petition = {
-        'type': 'PetitionObject',
-        'UUID': petittionUUID,  # unique ID of the petition
-        'options': options,  # the options
-        'scores': scores,  # the signatures per option
+        "type": "PetitionObject",
+        "UUID": petition_uuid,  # unique ID of the petition
     }
 
+    new_petition.update(petition_content)
 
     spent_list = {
         'type': 'SpentList',
@@ -50,7 +97,7 @@ def create_petition(inputs, reference_inputs, parameters,
     }
 
     return {
-        'outputs': (inputs[0], dumps(new_petition), dumps(spent_list)),
+        'outputs': (inputs[0], json.dumps(new_petition), json.dumps(spent_list)),
     }
 
 
@@ -64,41 +111,38 @@ def create_petition(inputs, reference_inputs, parameters,
 def create_petition_checker(inputs, reference_inputs, parameters, outputs, returns, dependencies):
     try:
         # retrieve inputs
-        petition = loads(outputs[1])
-        spent_list = loads(outputs[2])
+        petition_tx = json.loads(outputs[1])
+        spent_list = json.loads(outputs[2])
 
         # check format
         if len(inputs) != 1 or len(reference_inputs) != 0 or len(outputs) != 3 or len(returns) != 0:
             return False
 
         # check types
-        if loads(inputs[0])['type'] != 'PToken' or loads(outputs[0])['type'] != 'PToken': return False
-        if petition['type'] != 'PObject' or spent_list['type'] != 'PList': return False
+        if json.loads(inputs[0])['type'] != 'PetitionToken' or \
+                json.loads(outputs[0])['type'] != 'PetitionToken':
+            return False
+
+        if petition_tx['type'] != 'PetitionObject' or \
+                spent_list['type'] != 'SpentList':
+            return False
 
         # check fields
-        petition['UUID']  # check presence of field
-       # petition['verifier']  # check presence of field
-        petition['t_owners']  # check presence of field
-        petition['n_owners']  # check presence of field
-        options = petition['options']
-        scores = petition['scores']
-        # pub_owner = unpack(petition['owner'])
-        # if len(options) < 1 or len(options) != len(scores): return False
-        #
-        # # check initalised scores
-        # pet_params = pet_setup()
-        # (G, g, hs, o) = pet_params
-        # zero = (G.infinite(), G.infinite())
-        # if not all(init_score == pack(zero) for init_score in scores): return False
+        if petition_tx['UUID'] is None:
+            return False
 
-        # verify signature
-        # hasher = sha256()
-        # hasher.update(outputs[1].encode('utf8'))
-        # sig = unpack(parameters[0])
-        # if not do_ecdsa_verify(pet_params[0], pub_owner, sig, hasher.digest()): return False
+        if (petition_tx['petition']) is None:
+            return False
+
+        petition = petition_tx['petition']
+
+        # verified_petition = execute_contract(CONTRACTS.VERIFIER_APPROVE_PETITION,
+        #                                      keys=credential_issuer_verification_keypair,
+        #                                      data=petition)
 
         # verify that the spent list & results store are empty
-        if spent_list['list'] or petition['dec']: return False
+        if spent_list['list']:
+            return False
 
         # otherwise
         return True

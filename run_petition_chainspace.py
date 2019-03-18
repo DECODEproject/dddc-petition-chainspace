@@ -15,7 +15,8 @@ from scripts.zencontract import ZenContract, CONTRACTS
 import json
 
 
-debug = 0
+debug = 1
+debug_zen = 0
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -30,18 +31,44 @@ def execute_contract(contractName, keys=None, data=None):
     contract.keys(keys)
     contract.data(data)
     res = contract.execute()
-    if (res is not None) and res.startswith("{"):
-        print_json(contractName, res)
-    else:
-        print(contractName + ":\n" + res)
+    if debug_zen is 1:
+        if (res is not None) and res.startswith("{"):
+            print_json(contractName, res)
+        else:
+            print(contractName + ":\n" + res)
     return res
 
+
 def pp_json(json_str):
-    pp.pprint(json.loads(json_str))
+    pp_object(json.loads(json_str))
 
 
 def pp_object(obj):
     pp.pprint(obj)
+
+
+def debug_cs_object(cs_obj_str):
+    cs_obj = json.loads(cs_obj_str)
+    print("\nCHAINSPACE OBJECT:" + "(" + cs_obj['type'] + ")")
+    pp_object(cs_obj)
+
+
+def debug_list_of_cs_object(list_of_json_str):
+    for json_str in list_of_json_str:
+        debug_cs_object(json_str)
+
+
+def debug_tx(tx):
+    print("\nCHAINSPACE TX (" + tx['contractID'] + "." + tx['methodID'] + ")  ==================")
+    print("dependencies     : " + str(tx['dependencies']))
+    print("parameters       : " + str(tx['parameters']))
+    print("referenceInputs  : " + str(tx['referenceInputs']))
+    print("returns          : " + str(tx['returns']))
+    print("\ninputs         :")
+    debug_list_of_cs_object(tx['inputs'])
+    print("\noutputs        :")
+    debug_list_of_cs_object(tx['outputs'])
+    print("END TX  =============================================================================\n")
 
 
 results = []
@@ -49,9 +76,9 @@ results = []
 
 def post_transaction(transaction, path):
     tx = csc.transaction_inline_objects(transaction)
-    print("Posting transaction to " + path)
+    print("\nPosting transaction to " + path)
     if debug == 1:
-        pp_object(tx)
+        debug_tx(tx)
 
     start_tx = datetime.now()
     response = requests.post(
@@ -60,11 +87,14 @@ def post_transaction(transaction, path):
         + path,
         json=tx)
 
-    print(response.text)
-
     client_latency = (datetime.now() - start_tx)
-    json_response = json.loads(response.text)
-    results.append((json_response['success'], response.url, str(client_latency), transaction['transaction']['methodID']))
+    print(response.text)
+    if response.text.startswith("{"):
+        json_response = json.loads(response.text)
+        results.append((json_response['success'], response.url, str(client_latency), transaction['transaction']['methodID']))
+    else:
+        print(response.text)
+        results.append((False, response.url, str(client_latency, transaction['transaction']['methodID'])))
 
     return response
 
@@ -73,40 +103,12 @@ print("Petition Setup:")
 petition_UUID = 1234  # petition unique id (needed for crypto) - A BigNumber from Open SSL
 options = ['YES', 'NO']
 
-#t_owners = 2  # threshold number of owners
-#n_owners = 3  # total number of owners
-#v = [o.random() for _ in range(0, t_owners)]
-#print("threshold seeds for secret keys (v): " + str(v))
-#sk_owners = [cu.poly_eval(v, i) % o for i in range(1, n_owners + 1)]
-#print("\nSecret Keys of the petition owners: ")
-# for i in range(n_owners):
-#     print("sk[" + str(i) + "] : " + str(sk_owners[i]))
-# pk_owner = [xi * g for xi in sk_owners]
-#print("\nPublic keys of the petition owners: ")
-# for i in range(n_owners):
-#     print("pk[" + str(i) + "] : " + str_ec_pt(pk_owner[i]))
-# l = cu.lagrange_basis(range(1, t_owners + 1), o, 0)
-# aggr_pk_owner = cu.ec_sum([l[i] * pk_owner[i] for i in range(t_owners)])
-#print("\nAggregate public key for owners: " + str_ec_pt(aggr_pk_owner))
-# coconut parameters
-# print("Coconut setup")
-# t, n = 4, 5  # threshold and total number of authorities
-# bp_params = cs.setup()  # bp system's parameters
-#
-# (sk, vk) = cs.ttp_keygen(bp_params, t, n)  # authorities keys
-#print("\nSecret keys of the authorities (Credential issuers):")
-# for i in range(n):
-#     print("sk_auth[" + str(i) + "] : " + str(sk[i]))
-#print("\nVerification keys of the authorities (Credential issuers):")
-# for i in range(n):
-#     print("pk_auth[" + str(i) + "] : " + str(vk[i]))
-# aggr_vk = cs.agg_key(bp_params, vk, threshold=True)
-#print("\nAggregated Verification Key: " + str(aggr_vk))
 start_time = datetime.now()
 print("\n======== EXECUTING PETITION =========\n")
 
 credential_issuer_keypair = execute_contract(CONTRACTS.CREDENTIAL_ISSUER_GENERATE_KEYPAIR)
 credential_issuer_verification_keypair = execute_contract(CONTRACTS.CREDENTIAL_ISSUER_PUBLISH_VERIFY, keys=credential_issuer_keypair)
+
 
 # Generate a citizen keypair and credential (equivalent to "sign_petition_crypto" in the python version
 # Which returns a private key and "sigma" which is the credential
@@ -118,7 +120,6 @@ def generate_citizen_keypair_and_credential():
     return (citizen_keypair, citizen_credential)
 
 
-
 with petition_contract.test_service():
     print("\npetition.init()")
     init_transaction = petition.init()
@@ -128,39 +129,30 @@ with petition_contract.test_service():
 
     (citizen_A_keypair, citizen_A_credential) = generate_citizen_keypair_and_credential()
 
-    credential_proof = execute_contract(CONTRACTS.CITIZEN_PROVE_CREDENTIAL, keys=citizen_A_credential, data=credential_issuer_verification_keypair)
-
-    print("CREDENTIAL PROOF: ")
-    pp_json(credential_proof)
-
-    citizen_petition = execute_contract(CONTRACTS.CITIZEN_CREATE_PETITION, keys=citizen_A_credential, data=credential_issuer_verification_keypair)
-
-    print("CREATE PETITION: ")
-    pp_json(citizen_petition)
-
-    print("VERIFICATION KEYPAIR: ")
-    pp_json(credential_issuer_verification_keypair)
-
-    # This goes in the verifier
-    #verified_petition = execute_contract(CONTRACTS.VERIFIER_APPROVE_PETITION, keys=credential_issuer_verification_keypair, data=citizen_petition)
-
-    # Everything needed is in the petition. The checker just needs to run VERIFIER_APPROVE_PETITION
+    print("\npetition.create_petition()\n")
 
     create_transaction = petition.create_petition(
         (token,),
         None,
         None,
         petition_UUID,
-        options,
-        citizen_petition,
+        citizen_A_credential,
         credential_issuer_verification_keypair
     )
-    print("\npetition.create_petition()")
 
     post_transaction(create_transaction, "/create_petition")
 
     old_petition = create_transaction['transaction']['outputs'][1]
     old_list = create_transaction['transaction']['outputs'][2]
+
+    # This is not needed until signing
+    # credential_proof = execute_contract(CONTRACTS.CITIZEN_PROVE_CREDENTIAL, keys=citizen_A_credential, data=credential_issuer_verification_keypair)
+    # print("CREDENTIAL PROOF: ")
+    # pp_json(credential_proof)
+    #
+    # print("VERIFICATION KEYPAIR: ")
+    # pp_json(credential_issuer_verification_keypair)
+
 
 
 end_time = datetime.now()

@@ -11,8 +11,7 @@ def get_contract(name):
     # if python 2.7...
     path = config.get("contracts_path")
     filename = path + "/" + name
-    print("Trying to load contract from " + filename)
-    f = f = open(filename, 'r')
+    f = open(filename, 'r')
     return f.read()
     #else
     #return CONTRACTS_DIR.joinpath(name).read_text().encode()
