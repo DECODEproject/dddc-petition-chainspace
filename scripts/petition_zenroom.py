@@ -124,17 +124,19 @@ def sign_petition(inputs, reference_inputs, parameters, petition_signature):
 @contract.method('tally_petition')
 def tally_petition(inputs, reference_inputs, parameters, owner_credential):
 
-    petition_json = inputs[0]
-    petition = json.loads(petition_json)
+    petition = json.loads(inputs[0])
     zen_petition = petition['zen_petition']
 
     tally = execute_contract(CONTRACTS.CITIZEN_TALLY_PETITION,
                              keys=owner_credential,
                              data=json.dumps(zen_petition))
 
+    new_petition = petition.copy()
+
+    new_petition['zen_tally'] = json.loads(tally)
+
     return {
-        'outputs': (petition_json, ),
-        'extra_parameters': (tally, )
+        'outputs': (json.dumps(new_petition), )
     }
 
 
@@ -273,7 +275,7 @@ def tally_petition_checker(inputs, reference_inputs, parameters, outputs, return
         if len(inputs) is not 1 or \
                 len(reference_inputs) is not 0 or \
                 len(outputs) is not 1 or \
-                len(parameters) is not 1 or \
+                len(parameters) is not 0 or \
                 len(returns) is not 0:
             print("CHECKER-FAIL: incorrect inputs and outputs:")
             print("inputs: " + str(len(inputs)))
@@ -299,17 +301,20 @@ def tally_petition_checker(inputs, reference_inputs, parameters, outputs, return
             print("CHECKER-FAIL: no verifier")
             return False
 
-        if (parameters[0]) is None:
-            print("CHECKER-FAIL: no signature")
+        if (petition['zen_tally']) is None:
+            print("CHECKER-FAIL: no zen_tally")
             return False
+
 
         # @TODO - need to cryptographically verify that the Tally is valid - in the python version it provides a proof
 
-        tally = parameters[0]
-        if not (tally.startswith("{") and tally.endswith("}")):
-            print("CHECKER-FAIL: tally is not a valid JSON!")  # this will at least check if zenroom executed ok
-            print(tally)
-            return False
+        zen_tally = petition['zen_tally']
+
+        if zen_tally['petition'] is None:
+            print("CHECKER-FAIL: no petition in zen_tally")
+
+        if zen_tally['tally'] is None:
+            print("CHECKER-FAIL: no tally result in zen_tally")
 
         return True
 
