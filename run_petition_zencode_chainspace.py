@@ -127,6 +127,7 @@ with petition_contract.test_service():
 
     post_transaction(init_transaction, "/init")
 
+    # Citizen A creates the petition
     (citizen_A_keypair, citizen_A_credential) = generate_citizen_keypair_and_credential()
 
     print("\npetition.create_petition()\n")
@@ -143,7 +144,15 @@ with petition_contract.test_service():
     post_transaction(create_transaction, "/create_petition")
 
     old_petition = create_transaction['transaction']['outputs'][1]
-    old_list = create_transaction['transaction']['outputs'][2]
+
+    # Citizen A, B and C sign the petition
+    # (citizen_B_keypair, citizen_B_credential) = generate_citizen_keypair_and_credential()
+    # (citizen_C_keypair, citizen_C_credential) = generate_citizen_keypair_and_credential()
+
+    # sign_A_tx = petition.signTransaction(
+    #
+    # )
+
 
     # This is not needed until signing
     # credential_proof = execute_contract(CONTRACTS.CITIZEN_PROVE_CREDENTIAL, keys=citizen_A_credential, data=credential_issuer_verification_keypair)

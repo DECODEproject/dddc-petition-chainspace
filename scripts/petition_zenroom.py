@@ -18,6 +18,8 @@ from scripts.zencontract import ZenContract, CONTRACTS
 pp = pprint.PrettyPrinter(indent=4)
 
 
+
+
 def print_json(contract_name, result):
     print(contract_name + ":foo")
     pp_json(result)
@@ -78,29 +80,38 @@ def create_petition(inputs, reference_inputs, parameters,
                     owner_credentials,
                     verification_keypair):
 
-    contract_result = execute_contract(CONTRACTS.CITIZEN_CREATE_PETITION,
-                                       keys=owner_credentials,
-                                       data=verification_keypair)
+    zen_petition = execute_contract(CONTRACTS.CITIZEN_CREATE_PETITION,
+                                    keys=owner_credentials,
+                                    data=verification_keypair)
 
-    petition_content = json.loads(contract_result)
-
-    new_petition = {
+    petition = {
         "type": "PetitionObject",
         "UUID": petition_uuid,
+        "zen_petition": json.loads(zen_petition),
         "verification_keypair": json.loads(verification_keypair)
     }
 
-    new_petition.update(petition_content)
-
-    pp_object(new_petition)
-
-    spent_list = {
-        'type': 'SpentList',
-        'list': []
+    return {
+        'outputs': (inputs[0], json.dumps(petition)),
     }
 
+# ------------------------------------------------------------------
+# sign
+# ------------------------------------------------------------------
+@contract.method('sign')
+def sign(inputs, reference_inputs, parameters, petition_signature):
+
+    old_petition = json.loads(inputs[0])
+    new_list = json.loads(inputs[1])
+
+    petition_with_signature = execute_contract(CONTRACTS.LEDGER_INCREMENT_PETITION,
+                                               keys=old_petition,
+                                               data=petition_signature)
+
+
     return {
-        'outputs': (inputs[0], json.dumps(new_petition), json.dumps(spent_list)),
+        'outputs': (petition_with_signature,json.dumps(new_list)),
+        'extra_parameters' : ()
     }
 
 
@@ -115,45 +126,42 @@ def create_petition_checker(inputs, reference_inputs, parameters, outputs, retur
     try:
         # retrieve inputs
         petition_token = json.loads(outputs[0])
-        petition_tx = json.loads(outputs[1])
-        spent_list = json.loads(outputs[2])
+        petition = json.loads(outputs[1])
 
         # check format
-        if len(inputs) != 1 or len(reference_inputs) != 0 or len(outputs) != 3 or len(returns) != 0:
+        if len(inputs) != 1 or len(reference_inputs) != 0 or len(outputs) != 2 or len(returns) != 0:
             print("CHECKER-FAIL: incorrect inputs and outputs")
             return False
 
         if petition_token['type'] != 'PetitionToken' or \
-                petition_tx['type'] != 'PetitionObject' or \
-                spent_list['type'] != 'SpentList':
-
+                petition['type'] != 'PetitionObject':
             print("CHECKER-FAIL: types incorrect")
             return False
 
         # check fields
-        if petition_tx['UUID'] is None:
+        if petition['UUID'] is None:
             print("CHECKER-FAIL: UUID is empty")
             return False
 
-        if (petition_tx['verifier']) is None:
+        if (petition['zen_petition']) is None:
+            print("CHECKER-FAIL: no zen_petition")
+            return False
+
+        if (petition['verification_keypair']) is None:
             print("CHECKER-FAIL: no verifier")
             return False
 
-        verification_keypair = json.dumps(petition_tx['verification_keypair'])
-        petition = json.dumps(petition_tx)
+        verification_keypair = json.dumps(petition['verification_keypair'])
+        zen_petition = json.dumps(petition['zen_petition'])
 
         verified_petition = execute_contract(CONTRACTS.VERIFIER_APPROVE_PETITION,
                                              keys=verification_keypair,
-                                             data=petition)
+                                             data=zen_petition)
 
         # @TODO - could do with a better thing to check here.
         if not (verified_petition.startswith("{") and verified_petition.endswith("}")):
             print("CHECKER-FAIL: could not verify petition!")
             print(verified_petition)
-            return False
-
-        # verify that the spent list & results store are empty
-        if spent_list['list']:
             return False
 
         # otherwise
