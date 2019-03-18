@@ -77,11 +77,11 @@ def init():
 @contract.method('create_petition')
 def create_petition(inputs, reference_inputs, parameters,
                     petition_uuid,
-                    owner_credentials,
+                    owner_credential,
                     verification_keypair):
 
     zen_petition = execute_contract(CONTRACTS.CITIZEN_CREATE_PETITION,
-                                    keys=owner_credentials,
+                                    keys=owner_credential,
                                     data=verification_keypair)
 
     petition = {
@@ -115,6 +115,26 @@ def sign_petition(inputs, reference_inputs, parameters, petition_signature):
     return {
         'outputs': (json.dumps(new_petition), ),
         'extra_parameters': (petition_signature, )
+    }
+
+
+# ------------------------------------------------------------------
+# tally
+# ------------------------------------------------------------------
+@contract.method('tally_petition')
+def tally_petition(inputs, reference_inputs, parameters, owner_credential):
+
+    petition_json = inputs[0]
+    petition = json.loads(petition_json)
+    zen_petition = petition['zen_petition']
+
+    tally = execute_contract(CONTRACTS.CITIZEN_TALLY_PETITION,
+                             keys=owner_credential,
+                             data=json.dumps(zen_petition))
+
+    return {
+        'outputs': (petition_json, ),
+        'extra_parameters': (tally, )
     }
 
 
@@ -183,11 +203,9 @@ def create_petition_checker(inputs, reference_inputs, parameters, outputs, retur
 # check petition's signature
 # ------------------------------------------------------------------
 @contract.checker('sign_petition')
-def create_petition_checker(inputs, reference_inputs, parameters, outputs, returns, dependencies):
+def sign_petition_checker(inputs, reference_inputs, parameters, outputs, returns, dependencies):
     try:
         petition = json.loads(outputs[0])  # outputs are always strings
-
-        print("CHECKER-PARAMETERS: " + str(parameters))
 
         # check format
         if len(inputs) is not 1 or \
@@ -223,19 +241,76 @@ def create_petition_checker(inputs, reference_inputs, parameters, outputs, retur
             print("CHECKER-FAIL: no signature")
             return False
 
-        # @TODO - need to cryptographically verify that the signature is valid and that what went into the petition is good
+        # @TODO - need to cryptographically verify that the signature is valid \
+        #  and that what went into the petition is good
 
-        # zen_petition = json.dumps(petition['zen_petition'])
-        #
-        #
-        #
-        # #
-        # if not (petition_with_signature.startswith("{") and petition_with_signature.endswith("}")):
-        #     print("CHECKER-FAIL: could not verify petition!")
-        #     print(verified_petition)
-        #     return False
+        signature = parameters[0]
+        if not (signature.startswith("{") and signature.endswith("}")):
+            print("CHECKER-FAIL: signature is not a valid JSON!")  # this will at least check if zenroom executed ok
+            print(signature)
+            return False
 
-        # otherwise
+        return True
+
+    except (KeyError, Exception):
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+
+        print("EXCEPTION IN CHECKER:")
+        traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                  limit=2, file=sys.stdout)
+        return False
+
+
+# ------------------------------------------------------------------
+# check petition's signature
+# ------------------------------------------------------------------
+@contract.checker('tally_petition')
+def tally_petition_checker(inputs, reference_inputs, parameters, outputs, returns, dependencies):
+    try:
+        petition = json.loads(outputs[0])  # outputs are always strings
+
+        # check format
+        if len(inputs) is not 1 or \
+                len(reference_inputs) is not 0 or \
+                len(outputs) is not 1 or \
+                len(parameters) is not 1 or \
+                len(returns) is not 0:
+            print("CHECKER-FAIL: incorrect inputs and outputs:")
+            print("inputs: " + str(len(inputs)))
+            print("outputs: " + str(len(outputs)))
+            print("parameters: " + str(len(parameters)))
+            print("returns: " + str(len(returns)))
+            return False
+
+        if petition['type'] != 'PetitionObject':
+            print("CHECKER-FAIL: types incorrect")
+            return False
+
+        # check fields
+        if petition['UUID'] is None:
+            print("CHECKER-FAIL: UUID is empty")
+            return False
+
+        if (petition['zen_petition']) is None:
+            print("CHECKER-FAIL: no zen_petition")
+            return False
+
+        if (petition['verification_keypair']) is None:
+            print("CHECKER-FAIL: no verifier")
+            return False
+
+        if (parameters[0]) is None:
+            print("CHECKER-FAIL: no signature")
+            return False
+
+        # @TODO - need to cryptographically verify that the Tally is valid - in the python version it provides a proof
+
+        tally = parameters[0]
+        if not (tally.startswith("{") and tally.endswith("}")):
+            print("CHECKER-FAIL: tally is not a valid JSON!")  # this will at least check if zenroom executed ok
+            print(tally)
+            return False
+
         return True
 
     except (KeyError, Exception):

@@ -158,6 +158,7 @@ with petition_contract.test_service():
 
     post_transaction(sign_A_tx, "/sign_petition")
 
+    old_petition = create_transaction['transaction']['outputs'][1]
 
 
     # Citizen A, B and C sign the petition
@@ -174,6 +175,14 @@ with petition_contract.test_service():
     # print("VERIFICATION KEYPAIR: ")
     # pp_json(credential_issuer_verification_keypair)
 
+    tally_tx = petition.tally_petition(
+        (old_petition,),
+        None,
+        None,
+        citizen_A_credential
+    )
+
+    post_transaction(tally_tx, "/tally_petition")
 
 
 end_time = datetime.now()
